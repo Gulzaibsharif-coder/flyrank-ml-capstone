@@ -4,202 +4,500 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Content Refresh Prioritization | FlyRank ML Capstone</title>
+<meta name="description" content="A leakage-aware, decision-support framework for prioritizing content refresh from page-level search-performance signals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,340;9..144,480;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#18212b; --muted:#5d6975; --line:#dfe5ea; --paper:#ffffff; --bg:#f5f7f9; --accent:#2457a6; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:Inter,Arial,Helvetica,sans-serif; color:var(--ink); background:var(--bg); line-height:1.65; }
-  .wrap { max-width:1050px; margin:auto; padding:28px 20px 70px; }
-  header { background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:42px; margin-bottom:22px; }
-  .eyebrow { text-transform:uppercase; letter-spacing:.12em; font-size:.78rem; color:var(--accent); font-weight:700; }
-  h1 { font-size:clamp(2rem,5vw,3.5rem); line-height:1.1; margin:10px 0 18px; }
-  h2 { margin-top:0; font-size:1.55rem; }
-  h3 { margin-bottom:8px; }
-  .subtitle { font-size:1.12rem; color:var(--muted); max-width:850px; }
-  nav { position:sticky; top:0; z-index:5; background:rgba(245,247,249,.95); backdrop-filter:blur(8px); padding:10px 0; margin-bottom:10px; overflow:auto; white-space:nowrap; }
-  nav a { color:var(--ink); text-decoration:none; margin-right:18px; font-size:.9rem; }
-  section { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:30px; margin:18px 0; }
-  .abstract { border-left:4px solid var(--accent); padding-left:18px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-  .card { border:1px solid var(--line); border-radius:12px; padding:18px; background:#fbfcfd; }
-  .card strong { display:block; margin-bottom:5px; }
-  table { width:100%; border-collapse:collapse; margin:18px 0; }
-  th,td { text-align:left; padding:12px; border-bottom:1px solid var(--line); }
-  th { background:#f1f4f7; }
-  .notice { padding:16px 18px; border-radius:10px; background:#f6f7f8; border:1px solid var(--line); color:var(--muted); }
-  .steps { font-size:1.05rem; font-weight:700; text-align:center; padding:18px; border:1px dashed #b8c1ca; border-radius:12px; }
-  footer { color:var(--muted); text-align:center; padding:25px 10px; font-size:.9rem; }
-  code { background:#eef1f4; padding:2px 5px; border-radius:4px; }
-  a { color:var(--accent); }
-  @media(max-width:650px){ header,section{padding:22px;} table{font-size:.9rem;} }
+  :root{
+    --bg:#EFF1EA;
+    --paper:#FFFFFF;
+    --ink:#141A17;
+    --muted:#5B6660;
+    --line:#DADFD6;
+    --accent:#145C4B;
+    --accent-soft:#DCEAE3;
+    --warm:#A24A1F;
+    --warm-soft:#F3E4D8;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',Arial,sans-serif;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-soft); }
+  .wrap{ max-width:960px; margin:0 auto; padding:0 24px; }
+
+  /* ---------- background texture ---------- */
+  .grid-bg{
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 34px 34px;
+    background-position: -1px -1px;
+    opacity:.35;
+  }
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky; top:0; z-index:20;
+    background:rgba(239,241,234,.92);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .wrap{
+    display:flex; align-items:center; gap:2px;
+    padding:14px 24px; overflow-x:auto; white-space:nowrap;
+  }
+  nav .brand{
+    font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.08em;
+    color:var(--accent); font-weight:600; margin-right:20px; text-transform:uppercase;
+    flex-shrink:0;
+  }
+  nav a{
+    color:var(--muted); text-decoration:none; font-size:.86rem;
+    padding:6px 12px; border-radius:20px; transition:.15s;
+    flex-shrink:0;
+  }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+
+  /* ---------- hero ---------- */
+  header.hero{ position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
+  header.hero .grid-bg{ position:absolute; inset:0; }
+  header.hero .fade{
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(239,241,234,0) 0%, var(--bg) 88%);
+  }
+  .hero-inner{ position:relative; padding:76px 0 54px; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+    background:var(--accent-soft); padding:6px 14px; border-radius:20px;
+    margin-bottom:22px;
+  }
+  .eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; }
+  h1{
+    font-family:'Fraunces',serif; font-weight:480; font-optical-sizing:auto;
+    font-size:clamp(2.1rem, 5.4vw, 3.4rem); line-height:1.06; letter-spacing:-.01em;
+    margin:0 0 22px; max-width:16ch;
+  }
+  .hero-sub{ font-size:1.08rem; color:var(--muted); max-width:56ch; margin:0 0 30px; }
+  .rq{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:20px 24px; max-width:640px;
+  }
+  .rq .label{ font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--warm); font-weight:600; display:block; margin-bottom:8px;}
+  .rq p{ margin:0; font-size:1.02rem; }
+
+  /* signal sparkline signature */
+  .signal{ position:absolute; right:-40px; top:60px; width:340px; opacity:.9; }
+  @media (max-width:820px){ .signal{ display:none; } }
+
+  /* ---------- sections ---------- */
+  section{ padding:64px 0; border-bottom:1px solid var(--line); position:relative; }
+  section:last-of-type{ border-bottom:none; }
+  .section-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:28px; }
+  .section-num{
+    font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--warm);
+    font-weight:600; letter-spacing:.06em; white-space:nowrap;
+  }
+  h2{
+    font-family:'Fraunces',serif; font-weight:480; font-size:1.62rem; margin:0;
+    letter-spacing:-.005em;
+  }
+  h3{ font-family:'Fraunces',serif; font-weight:480; font-size:1.12rem; margin:26px 0 10px; }
+  p{ margin:0 0 14px; color:var(--ink); }
+  section p:last-child{ margin-bottom:0; }
+
+  .lede{ font-size:1.06rem; color:var(--muted); max-width:70ch; }
+  .abstract-block{
+    border-left:3px solid var(--accent); padding-left:22px; max-width:74ch;
+  }
+  .abstract-block p{ color:var(--muted); }
+
+  code{
+    font-family:'IBM Plex Mono',monospace; background:var(--accent-soft); color:var(--accent);
+    padding:2px 7px; border-radius:5px; font-size:.88em;
+  }
+
+  /* card grid */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-top:8px; }
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:20px; transition:.15s;
+  }
+  .card:hover{ border-color:var(--accent); }
+  .card .k{
+    font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px;
+  }
+  .card .v{ font-size:.98rem; }
+  .card .v code{ display:inline-block; margin-top:2px; }
+
+  /* methodology list */
+  .method-item{ padding:18px 0; border-top:1px solid var(--line); }
+  .method-item:first-child{ border-top:none; padding-top:0; }
+  .method-item h3{ margin:0 0 8px; }
+
+  .callout{
+    background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:0 12px 12px 0; padding:18px 22px; color:var(--muted); font-size:.96rem;
+  }
+  .callout strong{ color:var(--ink); }
+
+  /* results */
+  .metric-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:26px 0 34px; }
+  .metric{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:18px 16px; text-align:left;
+  }
+  .metric .num{
+    font-family:'IBM Plex Mono',monospace; font-size:1.7rem; font-weight:600; color:var(--accent);
+    display:block; line-height:1;
+  }
+  .metric.warm .num{ color:var(--warm); }
+  .metric .lbl{ font-size:.78rem; color:var(--muted); margin-top:8px; display:block; }
+
+  .bars{ margin:30px 0; }
+  .bar-row{ margin-bottom:14px; }
+  .bar-row .top{ display:flex; justify-content:space-between; font-size:.84rem; margin-bottom:6px; }
+  .bar-row .top .name{ color:var(--muted); }
+  .bar-row .top .val{ font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  .bar-track{ height:9px; background:var(--line); border-radius:5px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:5px; background:var(--accent); }
+  .bar-fill.warm{ background:var(--warm); }
+
+  table{ width:100%; border-collapse:collapse; margin:22px 0; font-size:.92rem; }
+  thead th{
+    text-align:left; font-family:'IBM Plex Mono',monospace; font-size:.7rem;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+    padding:0 12px 10px; border-bottom:1px solid var(--line); font-weight:600;
+  }
+  tbody td{ padding:13px 12px; border-bottom:1px solid var(--line); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.num{ font-family:'IBM Plex Mono',monospace; font-weight:600; }
+
+  .finding{
+    background:var(--warm-soft); border:1px solid #e6c8ac; border-radius:12px;
+    padding:20px 24px; margin-top:22px;
+  }
+  .finding .label{
+    font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--warm); font-weight:600; display:block; margin-bottom:8px;
+  }
+  .finding p{ margin:0; }
+
+  /* limitations */
+  ol.limits{ list-style:none; margin:0; padding:0; counter-reset:lim; }
+  ol.limits li{
+    counter-increment:lim; padding:14px 0 14px 40px; position:relative;
+    border-top:1px solid var(--line); font-size:.96rem;
+  }
+  ol.limits li:first-child{ border-top:none; }
+  ol.limits li::before{
+    content:counter(lim,decimal-leading-zero);
+    position:absolute; left:0; top:14px;
+    font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--warm); font-weight:600;
+  }
+
+  /* recommendations flow */
+  .flow{ position:relative; margin-top:10px; }
+  .flow-item{
+    display:flex; gap:18px; padding:20px 0; border-top:1px solid var(--line); position:relative;
+  }
+  .flow-item:first-child{ border-top:none; }
+  .flow-num{
+    font-family:'IBM Plex Mono',monospace; font-size:.85rem; font-weight:600; color:var(--paper);
+    background:var(--accent); width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .flow-body strong{ display:block; margin-bottom:5px; font-size:1rem; }
+  .flow-body p{ margin:0; color:var(--muted); font-size:.94rem; }
+
+  .sequence{
+    margin-top:30px; padding:22px; background:var(--accent); color:#fff; border-radius:12px;
+    font-family:'IBM Plex Mono',monospace; font-size:.86rem; letter-spacing:.03em;
+    text-align:center; overflow-x:auto; white-space:nowrap;
+  }
+
+  /* repro links */
+  .link-row{ display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+  .link-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--paper); border:1px solid var(--line); border-radius:10px;
+    padding:12px 18px; text-decoration:none; color:var(--ink); font-size:.92rem;
+    transition:.15s;
+  }
+  .link-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .link-btn .arrow{ transition:.15s; }
+  .link-btn:hover .arrow{ transform:translateX(3px); }
+
+  footer{
+    padding:44px 0 60px; text-align:center; color:var(--muted); font-size:.86rem;
+  }
+  footer .fmark{ font-family:'IBM Plex Mono',monospace; letter-spacing:.05em; color:var(--accent); font-weight:600; margin-bottom:6px; }
+
+  @media(max-width:640px){
+    section{ padding:48px 0; }
+    .hero-inner{ padding:56px 0 40px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
 
 <nav>
-  <a href="#abstract">Abstract</a>
-  <a href="#problem">Problem</a>
-  <a href="#data">Data</a>
-  <a href="#method">Methodology</a>
-  <a href="#results">Results</a>
-  <a href="#limits">Limitations</a>
-  <a href="#recommendations">Recommendations</a>
-  <a href="#repro">Reproducibility</a>
+  <div class="wrap">
+    <span class="brand">FlyRank / ML-12</span>
+    <a href="#abstract">Abstract</a>
+    <a href="#problem">Problem</a>
+    <a href="#data">Data</a>
+    <a href="#method">Method</a>
+    <a href="#results">Results</a>
+    <a href="#limits">Limitations</a>
+    <a href="#recommendations">Actions</a>
+    <a href="#repro">Reproduce</a>
+  </div>
 </nav>
 
-<header>
-  <div class="eyebrow">Machine Learning Capstone · FlyRank Internship</div>
-  <h1>Content Refresh Prioritization from Page-Level Search-Performance Signals</h1>
-  <p class="subtitle">
-    A leakage-aware, decision-support framework for identifying content that should be reviewed first before search visibility deteriorates.
-  </p>
-  <p><strong>Research question:</strong> Can page-level search-performance signals be used to identify content that should be prioritized for refresh before its search visibility deteriorates?</p>
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="fade"></div>
+  <div class="wrap">
+    <div class="hero-inner">
+      <span class="eyebrow"><span class="dot"></span>Machine Learning Capstone · FlyRank Internship</span>
+      <h1>Content Refresh Prioritization from Page&#8209;Level Search Signals</h1>
+      <p class="hero-sub">A leakage-aware, decision-support framework for identifying which pages should be reviewed first — before their search visibility deteriorates.</p>
+      <div class="rq">
+        <span class="label">Research question</span>
+        <p>Can page-level search-performance signals be used to identify content that should be prioritized for refresh before its search visibility deteriorates?</p>
+      </div>
+    </div>
+
+    <svg class="signal" viewBox="0 0 340 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M0 30 L40 34 L80 26 L120 46 L160 40 L200 70 L240 64 L280 100 L340 108" stroke="#A24A1F" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7"/>
+      <path d="M0 70 L40 66 L80 74 L120 58 L160 62 L200 44 L240 50 L280 30 L340 24" stroke="#145C4B" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="340" cy="24" r="4.5" fill="#145C4B"/>
+      <circle cx="340" cy="108" r="4.5" fill="#A24A1F"/>
+    </svg>
+  </div>
 </header>
 
-<section id="abstract">
-  <h2>Abstract</h2>
-  <div class="abstract">
-    <p>This project asks whether page-level search-performance signals can help prioritize content for refresh before search visibility deteriorates.</p>
-    <p>The analysis uses page-level observations from the FlyRank ML Internship warehouse and treats refresh prioritization as a supervised classification problem.</p>
-    <p>A simple rule-based baseline is compared with a leakage-safe machine-learning approach on held-out evaluation data.</p>
-    <p>The workflow emphasizes target definition, feature separation, validation, leakage checks, and translation of model output into ranked editorial actions.</p>
-    <p>The resulting framework is intended as decision support for human review, not as a causal claim or guarantee of future ranking, click, or traffic improvement.</p>
-  </div>
-</section>
+<div class="wrap">
 
-<section id="problem">
-  <h2>1. Introduction / Problem Statement</h2>
-  <p>When many pages have measurable search-performance signals, content teams need a practical way to decide which pages should be reviewed first. Manual judgment alone can make prioritization inconsistent and difficult to scale.</p>
-  <p>This project supports a content-refresh prioritization decision: which pages should be reviewed first based on measurable performance signals rather than relying only on manual judgment.</p>
-  <p>The goal is not to predict Google rankings directly. It is to create a reproducible framework that converts observable page-level signals into a ranked review queue.</p>
-</section>
+  <section id="abstract">
+    <div class="section-head"><span class="section-num">00 · Abstract</span></div>
+    <div class="abstract-block">
+      <p>This project asks whether page-level search-performance signals can help prioritize content for refresh before search visibility deteriorates.</p>
+      <p>The analysis uses page-level observations from the FlyRank ML Internship warehouse and treats refresh prioritization as a supervised classification problem. A simple rule-based baseline is compared with a leakage-safe machine-learning approach on held-out evaluation data.</p>
+      <p>The workflow emphasizes target definition, feature separation, validation, leakage checks, and translation of model output into ranked editorial actions. The resulting framework is intended as decision support for human review — not a causal claim or a guarantee of future ranking, click, or traffic improvement.</p>
+    </div>
+  </section>
 
-<section id="data">
-  <h2>2. Data</h2>
-  <p>This study uses the FlyRank internship warehouse release containing the <code>fact_content_daily_performance</code> table. The dataset contains page-level daily search-performance observations used to study content-refresh prioritization.</p>
-  <p>The analysis uses the available reporting-period observations required by the capstone workflow. Only fields necessary for the research question are retained.</p>
-  <p>The analysis excludes identifiers, client-specific information, private search queries, URLs, and other information that could expose confidential or personally identifiable information. Aggregations and derived features are used where possible to keep the published analysis public-safe.</p>
+  <section id="problem">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Problem Statement</h2>
+    </div>
+    <p class="lede">When many pages have measurable search-performance signals, content teams need a practical way to decide which pages should be reviewed first. Manual judgment alone makes prioritization inconsistent and hard to scale.</p>
+    <p>This project supports a content-refresh prioritization decision: which pages should be reviewed first based on measurable performance signals rather than relying only on manual judgment. The goal is not to predict Google rankings directly — it's to build a reproducible framework that converts observable page-level signals into a ranked review queue.</p>
+  </section>
 
-  <div class="grid">
-    <div class="card"><strong>Data source</strong>FlyRank ML Internship dataset</div>
-    <div class="card"><strong>Primary table</strong><code>fact_content_daily_performance</code></div>
-    <div class="card"><strong>Unit of analysis</strong>Page-level search-performance observations</div>
-    <div class="card"><strong>Public safety</strong>No client names, private URLs, private queries, credentials, or confidential identifiers</div>
-  </div>
-</section>
+  <section id="data">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>Data</h2>
+    </div>
+    <p>This study uses the FlyRank internship warehouse release containing the <code>fact_content_daily_performance</code> table — page-level daily search-performance observations used to study content-refresh prioritization. The analysis uses only the fields necessary for the research question, and excludes identifiers, client-specific information, private search queries, URLs, and anything that could expose confidential or personally identifiable information.</p>
+    <div class="grid">
+      <div class="card"><span class="k">Data source</span><div class="v">FlyRank ML Internship dataset</div></div>
+      <div class="card"><span class="k">Primary table</span><div class="v"><code>fact_content_daily_performance</code></div></div>
+      <div class="card"><span class="k">Unit of analysis</span><div class="v">Page-level search-performance observations</div></div>
+      <div class="card"><span class="k">Public safety</span><div class="v">No client names, private URLs, queries, credentials, or confidential identifiers</div></div>
+    </div>
+  </section>
 
-<section id="method">
-  <h2>3. Methodology</h2>
-  <p>The analysis treats content-refresh prioritization as a supervised classification problem. The objective is not to predict search rankings directly, but to identify pages that warrant review based on observable search-performance signals.</p>
+  <section id="method">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2>Methodology</h2>
+    </div>
+    <p class="lede">Content-refresh prioritization is treated as a supervised classification problem. The objective is not to predict search rankings directly, but to identify pages that warrant review based on observable performance signals.</p>
 
-  <h3>Assumptions</h3>
-  <p>Historical page-level performance signals may contain useful information for prioritizing pages for review. This is a decision-support exercise rather than a causal estimate of the effect of refreshing content.</p>
+    <div class="method-item">
+      <h3>Assumptions</h3>
+      <p>Historical page-level performance signals may contain useful information for prioritizing pages for review. This is decision support, not a causal estimate of the effect of refreshing content.</p>
+    </div>
+    <div class="method-item">
+      <h3>Features &amp; label</h3>
+      <p>Candidate features represent measurable performance and change signals while avoiding variables that directly define the target. The target represents whether an observation meets the predefined refresh-priority condition — a decision-support label, not ground truth for whether a future refresh will succeed.</p>
+    </div>
+    <div class="method-item">
+      <h3>Baseline &amp; validation</h3>
+      <p>A simple rule-based baseline is the reference point; the model is evaluated against it on the same held-out split. Where temporal information is available, observations are ordered by reporting period so information from the future is never used to predict the past.</p>
+    </div>
+    <div class="method-item">
+      <h3>Leakage checks</h3>
+      <p>The workflow checks whether any feature is derived directly from the target or from information only available after the prediction point. In particular, the variables used to construct a CTR-derived target are excluded from the predictive feature set.</p>
+    </div>
 
-  <h3>Features</h3>
-  <p>Candidate features are derived from page-level search-performance observations. Features are selected to represent measurable performance and change signals while avoiding variables that directly define the target.</p>
+    <div class="callout"><strong>Interpretation:</strong> model output is prioritization support. A high-priority page should be reviewed first — it should not be read as proof that a refresh will increase rankings, clicks, or traffic.</div>
+  </section>
 
-  <h3>Label definition</h3>
-  <p>The target represents whether an observation meets the predefined refresh-priority condition established during the capstone workflow. The label is treated as a decision-support label rather than ground truth for whether a future content refresh will succeed.</p>
+  <section id="results">
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <h2>Results vs. Baseline</h2>
+    </div>
+    <p class="lede">The final leakage-safe model is compared with the majority-class baseline on the same held-out evaluation split.</p>
 
-  <h3>Baseline</h3>
-  <p>A simple rule-based baseline is used as the reference point. The machine-learning model is evaluated against the same baseline and the same held-out evaluation data.</p>
+    <div class="metric-row">
+      <div class="metric"><span class="num">0.919</span><span class="lbl">Baseline accuracy</span></div>
+      <div class="metric warm"><span class="num">0.897</span><span class="lbl">Model accuracy</span></div>
+      <div class="metric warm"><span class="num">0.194</span><span class="lbl">Model precision</span></div>
+      <div class="metric warm"><span class="num">0.086</span><span class="lbl">Model recall</span></div>
+    </div>
 
-  <h3>Validation design</h3>
-  <p>The final evaluation uses an unseen evaluation split. Where temporal information is available, observations are ordered by reporting period so that information from the future is not used to predict the past.</p>
+    <h3>Metric comparison</h3>
+    <div class="bars">
+      <div class="bar-row">
+        <div class="top"><span class="name">Baseline accuracy</span><span class="val">0.919</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:91.9%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">Model accuracy</span><span class="val">0.897</span></div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:89.7%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">Model precision</span><span class="val">0.194</span></div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:19.4%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">Model recall</span><span class="val">0.086</span></div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:8.6%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="top"><span class="name">Model F1</span><span class="val">0.120</span></div>
+        <div class="bar-track"><div class="bar-fill warm" style="width:12%"></div></div>
+      </div>
+    </div>
 
-  <h3>Leakage checks</h3>
-  <p>The workflow checks whether any feature is derived directly from the target or from information that would only be available after the prediction point. In particular, variables used to construct a CTR-derived target are excluded from the predictive feature set.</p>
+    <table>
+      <thead><tr><th>Approach</th><th>Metric</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline rule (majority class)</td><td>Accuracy</td><td class="num">0.919</td></tr>
+        <tr><td>Leakage-safe model</td><td>Accuracy</td><td class="num">0.897</td></tr>
+        <tr><td>Leakage-safe model</td><td>Precision</td><td class="num">0.194</td></tr>
+        <tr><td>Leakage-safe model</td><td>Recall</td><td class="num">0.086</td></tr>
+        <tr><td>Leakage-safe model</td><td>F1</td><td class="num">0.120</td></tr>
+      </tbody>
+    </table>
 
-  <div class="notice">
-    <strong>Interpretation:</strong> Model output is prioritization support. A high-priority page should be reviewed first; it should not be interpreted as proof that a content refresh will increase rankings, clicks, or traffic.
-  </div>
-</section>
+    <p>The target is imbalanced — approximately 8% of observations record a click — so the majority-class baseline reaches high accuracy simply by never predicting the rare outcome, at the cost of zero recall. The leakage-safe model trades a small amount of accuracy for the ability to identify some of the true positive cases the baseline misses entirely.</p>
 
-<section id="results">
-  <h2>4. Results vs Baseline</h2>
-  <p>The final model is intended to be compared with the simple baseline on the same held-out evaluation split. The comparison should use metrics produced by the final leakage-safe evaluation rather than earlier exploratory results.</p>
+    <div class="finding">
+      <span class="label">Main finding</span>
+      <p>On raw accuracy, the majority-class baseline outperformed the leakage-safe model (0.919 vs. 0.897). However, the model produced a non-zero, if modest, minority-class signal (precision 0.194, recall 0.086, F1 0.120) that the baseline cannot produce by construction. The result supports using the model only as a prioritization aid for human review — not as an autonomous decision system.</p>
+    </div>
+  </section>
 
-  <table>
-    <thead><tr><th>Approach</th><th>Evaluation metric</th><th>Result</th></tr></thead>
-    <tbody>
-      <tr><td>Baseline rule</td><td>Final selected metric</td><td>Pending final notebook metric</td></tr>
-      <tr><td>Leakage-safe model</td><td>Final selected metric</td><td>Pending final notebook metric</td></tr>
-    </tbody>
-  </table>
+  <section id="limits">
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <h2>Limitations &amp; Honest Framing</h2>
+    </div>
+    <ol class="limits">
+      <li>The target is a decision-support label rather than a directly observed future business outcome.</li>
+      <li>A high predicted priority does not establish that refreshing a page will improve rankings, clicks, or traffic.</li>
+      <li>Results are based on the available FlyRank internship dataset and reporting periods, and should not automatically be generalized to every website, industry, search environment, or future period.</li>
+      <li>Observational search-performance data cannot by itself establish causality.</li>
+      <li>Model performance depends on the selected features, label definition, validation design, and evaluation period.</li>
+      <li>Leakage control is required for trustworthy evaluation.</li>
+    </ol>
+    <div class="callout" style="margin-top:22px;"><strong>Strongest defensible claim:</strong> the analysis provides a reproducible, data-informed framework for prioritizing content for human review. It does not establish that the model can guarantee future search-performance improvements.</div>
+  </section>
 
-  <div class="notice">
-    <strong>Important:</strong> The uploaded capstone contains placeholders for the final baseline and model metrics. No performance numbers are fabricated on this public page. Replace the two pending values and the main finding after running the final leakage-safe evaluation.
-  </div>
+  <section id="recommendations">
+    <div class="section-head">
+      <span class="section-num">06</span>
+      <h2>Ranked Recommendations</h2>
+    </div>
+    <p class="lede">The model output is translated into an action-oriented content-refresh playbook.</p>
 
-  <h3>Main finding</h3>
-  <p>The final finding should be stated only after the final model is run: the model either outperformed, performed similarly to, or was outperformed by the baseline on the held-out split.</p>
-</section>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-num">1</div>
+        <div class="flow-body"><strong>Review the highest-priority pages first</strong><p>Start with pages receiving the strongest refresh-priority signals. Review recent search-performance trend, content quality, search-intent alignment, and freshness.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">2</div>
+        <div class="flow-body"><strong>Investigate declining performance trends</strong><p>Prioritize sustained deterioration over short-term fluctuations. Compare recent performance with the relevant historical period.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">3</div>
+        <div class="flow-body"><strong>Prioritize actionable improvement opportunities</strong><p>A high model score alone should not trigger an automatic rewrite. Give higher operational priority where the diagnosis suggests a concrete intervention.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">4</div>
+        <div class="flow-body"><strong>Use human review before publishing changes</strong><p>The model is a prioritization mechanism, not an autonomous content editor.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">5</div>
+        <div class="flow-body"><strong>Measure the outcome after refresh</strong><p>Compare subsequent performance with an appropriate pre-refresh period, while avoiding unsupported causal claims.</p></div>
+      </div>
+    </div>
 
-<section id="limits">
-  <h2>5. Limitations &amp; Honest Framing</h2>
-  <ol>
-    <li>The target is a decision-support label rather than a directly observed future business outcome.</li>
-    <li>A high predicted priority does not establish that refreshing a page will improve rankings, clicks, or traffic.</li>
-    <li>Results are based on the available FlyRank internship dataset and reporting periods and should not automatically be generalized to every website, industry, search environment, or future period.</li>
-    <li>Observational search-performance data cannot by itself establish causality.</li>
-    <li>Model performance depends on the selected features, label definition, validation design, and evaluation period.</li>
-    <li>Leakage control is required for trustworthy evaluation.</li>
-  </ol>
-  <p><strong>Strongest defensible claim:</strong> the analysis provides a reproducible, data-informed framework for prioritizing content for human review. It does not establish that the model can guarantee future search-performance improvements.</p>
-</section>
+    <div class="sequence">Detect → Diagnose → Prioritize → Human review → Refresh → Measure</div>
+  </section>
 
-<section id="recommendations">
-  <h2>6. Ranked Recommendations</h2>
+  <section id="artifacts">
+    <div class="section-head">
+      <span class="section-num">07</span>
+      <h2>Analytical Artifacts</h2>
+    </div>
+    <p>The published page embeds the main artifacts needed to inspect the work:</p>
+    <div class="grid">
+      <div class="card"><span class="k">01</span><div class="v">Model-versus-baseline results table</div></div>
+      <div class="card"><span class="k">02</span><div class="v">Evaluation metric comparison</div></div>
+      <div class="card"><span class="k">03</span><div class="v">Ranked content-refresh recommendations</div></div>
+      <div class="card"><span class="k">04</span><div class="v">Reproducibility links to notebook &amp; repository</div></div>
+    </div>
+    <p style="margin-top:18px; color:var(--muted); font-size:.9rem;">Before publication, all artifacts are checked for private queries, client names, private URLs, credentials, tokens, or other confidential identifiers.</p>
+  </section>
 
-  <div class="card"><strong>1. Review the highest-priority pages first</strong>Start with pages receiving the strongest refresh-priority signals. Review recent search-performance trend, content quality, search-intent alignment, and freshness.</div>
-  <br>
-  <div class="card"><strong>2. Investigate declining performance trends</strong>Prioritize sustained deterioration over short-term fluctuations. Compare recent performance with the relevant historical period.</div>
-  <br>
-  <div class="card"><strong>3. Prioritize actionable improvement opportunities</strong>A high model score alone should not trigger an automatic rewrite. Give higher operational priority where the diagnosis suggests a concrete intervention.</div>
-  <br>
-  <div class="card"><strong>4. Use human review before publishing changes</strong>The model is a prioritization mechanism, not an autonomous content editor.</div>
-  <br>
-  <div class="card"><strong>5. Measure the outcome after refresh</strong>Compare subsequent performance with an appropriate pre-refresh period while avoiding unsupported causal claims.</div>
+  <section id="repro">
+    <div class="section-head">
+      <span class="section-num">08</span>
+      <h2>Reproducibility</h2>
+    </div>
+    <p>The capstone notebook is maintained in the project repository under <code>work/notebooks/</code>. This page is deployed from the same repository using GitHub Pages, so published claims are traceable to the notebook workflow and the final leakage-safe evaluation.</p>
+    <div class="link-row">
+      <a class="link-btn" href="https://github.com/Gulzaibsharif-coder/flyrank-ml-capstone" target="_blank" rel="noopener">GitHub repository <span class="arrow">→</span></a>
+      <a class="link-btn" href="https://colab.research.google.com/github/Gulzaibsharif-coder/flyrank-ml-capstone/blob/main/work/notebooks/capstone.ipynb" target="_blank" rel="noopener">Open notebook in Colab <span class="arrow">→</span></a>
+    </div>
+  </section>
 
-  <h3>Recommended operating sequence</h3>
-  <div class="steps">Detect → Diagnose → Prioritize → Human review → Refresh → Measure</div>
-</section>
-
-<section id="artifacts">
-  <h2>7. Analytical Artifacts</h2>
-  <p>The final paper should embed the main artifacts needed to inspect the work:</p>
-  <ol>
-    <li>Model-versus-baseline results table.</li>
-    <li>Evaluation metric comparison.</li>
-    <li>Model interpretation / feature importance where available.</li>
-    <li>Ranked content-refresh recommendations.</li>
-    <li>Reproducibility links to the notebooks and repository.</li>
-  </ol>
-  <p class="notice">Before publication, verify that all artifacts contain no private queries, client names, private URLs, credentials, tokens, or confidential identifiers.</p>
-</section>
-
-<section id="repro">
-  <h2>8. Reproducibility</h2>
-  <p>The capstone notebook is maintained in the project repository under <code>work/notebooks/</code>. The public research page is deployed from the same repository using GitHub Pages.</p>
-  <ul>
-    <li><a href="https://github.com/Gulzaibsharif-coder/flyrank-ml-capstone" target="_blank" rel="noopener">GitHub repository</a></li>
-    <li><a href="https://colab.research.google.com/github/Gulzaibsharif-coder/flyrank-ml-capstone/blob/main/work/notebooks/capstone.ipynb" target="_blank" rel="noopener">Open Capstone Notebook in Colab</a></li>
-  </ul>
-  <p>Published claims should be traceable to the notebook workflow and final leakage-safe evaluation.</p>
-</section>
-
-<section id="ack">
-  <h2>9. Acknowledgments &amp; Data Credit</h2>
-  <p><strong>Built on the FlyRank ML Internship dataset.</strong></p>
-  <p>Data and internship context: <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a>.</p>
-  <p>This project was completed as part of the FlyRank Machine Learning Internship capstone.</p>
-</section>
-
-<footer>
-  FlyRank Machine Learning Capstone · Content Refresh / Content Opportunity Scoring<br>
-  Decision-support research artifact; not a causal claim about search algorithms or refresh impact.
-</footer>
+  <section id="ack" style="border-bottom:none;">
+    <div class="section-head">
+      <span class="section-num">09</span>
+      <h2>Acknowledgments &amp; Data Credit</h2>
+    </div>
+    <p><strong>Built on the FlyRank ML Internship dataset.</strong> Data and internship context: <a href="https://flyrank.ai" target="_blank" rel="noopener" style="color:var(--accent);">flyrank.ai</a>.</p>
+    <p>This project was completed as part of the FlyRank Machine Learning Internship capstone.</p>
+  </section>
 
 </div>
+
+<footer>
+  <div class="fmark">FlyRank ML Capstone</div>
+  <div>Content Refresh / Content Opportunity Scoring</div>
+  <div style="margin-top:6px;">Decision-support research artifact — not a causal claim about search algorithms or refresh impact.</div>
+</footer>
+
 </body>
 </html>
